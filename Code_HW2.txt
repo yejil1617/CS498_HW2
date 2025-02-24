@@ -1,0 +1,162 @@
+sever.js
+
+const express = require("express");
+const mariadb = require("mariadb");
+const path = require("path");
+const bodyParser = require("body-parser");
+const app = express();
+const port = 80;
+
+// Create a MariaDB connection pool
+const pool = mariadb.createPool({
+  host: "127.0.0.1",
+  port: 3306,
+  user: "yeji",
+  password: "secret",
+  database: "bankdb",
+  connectionLimit: 5,
+});
+
+// Set EJS as the view engine and set the views directory
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "frontend"));
+
+app.use(bodyParser.json())
+// Use body-parser middleware to parse request bodies
+app.use(bodyParser.urlencoded({ extended: true }));
+// Alterntively, you can use Express's built-in parsing:
+// app.use(express.urlencoded({ extended: true }));
+// Route: Display form and customer table
+
+app.get("/", async(req,res) => {
+ let conn;
+ try {
+  conn = await pool.getConnection();
+  const users = await conn.query("SELECT * FROM Users");
+  res.render("index", { users });
+ } catch (err) {
+  res.status(500).send(`Error retrieving users: ${err}`);
+ } finally {
+  if (conn) conn.release();
+ }
+});
+
+app.get("/greeting", async (req, res) => {
+  res.send("Hello World!");
+});
+
+// Route: Register a new user
+app.post("/register", async (req, res) => {
+  const username = req.body.username;
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.query("INSERT INTO Users (username) VALUES (?)", [username]);
+    res.redirect("/");
+  } catch (err) {
+    res.status(500).send(`Error registering user: ${err}`);
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// Route: Get list of users
+app.get("/list", async (req, res) => {
+   let conn;
+  try {
+    conn = await pool.getConnection();
+    const users = await conn.query("SELECT * FROM Users");
+    res.send(users);
+  } catch (err) {
+    res.status(500).send(`Error retrieving users: ${err}`);
+  } finally {
+    if (conn) conn.release();
+  }
+  });
+
+// Route: Clear all users
+app.post("/clear", async (req, res) => {
+  const username = req.body.username;
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.query("TRUNCATE TABLE Users");
+    res.redirect("/");
+  } catch (err) {
+    res.status(500).send(`Error registering user: ${err}`);
+  } finally {
+    if (conn) conn.release();
+  }
+});
+  app.listen(port, ()  => {
+    console.log(`Server is running on port http://<external ip>:${port}`);
+  });
+_________________________ 
+index.ejs
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CS 498 HW 2</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      table {
+        border-collapse: collapse;
+        width: 50%;
+      }
+      table,
+      th,
+      td {
+        border: 1px solid #ccc;
+      }
+      th,
+      td {
+        padding: 8px;
+        text-align: left;
+      }
+      form {
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Users</h1>
+    <form action="/register" method="post">
+      <input
+        type="text"
+        name="username"
+        placeholder="Enter username"
+        required
+      />
+      <button type="submit">Register</button>
+    </form>
+
+    <form action="/clear" method="post">
+      <button type="submit">Clear Users</button>
+    </form>
+
+    <h2>User list</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Username</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (users && users.length > 0) { %> <% users.forEach(user => { %>
+        <tr>
+          <td><%= user.username %></td>
+        </tr>
+        <% }); %> <% } else { %>
+        <tr>
+          <td>No users found.</td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </body>
+</html>
