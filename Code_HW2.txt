@@ -56,7 +56,6 @@ app.post("/register", async (req, res) => {
     await conn.query("INSERT INTO Users (username) VALUES (?)", [username]);
    
 
-    // Propagate registration to the other instance
     try {
       const response = await fetch(`${OTHER_INSTANCE_URL}/register`, {
         method: "POST",
