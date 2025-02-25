@@ -65,8 +65,13 @@ app.get("/list", async (req, res) => {
    let conn;
   try {
     conn = await pool.getConnection();
-    const users = await conn.query("SELECT * FROM Users");
-    res.send(users);
+    const users_result = await conn.query("SELECT * FROM Users");
+    console.log(users_result)
+    let users=[]
+    for (let i = 0; i < users_result.length; i++) {
+      users.push(users_result[i].username);
+    }
+    res.json({users});
   } catch (err) {
     res.status(500).send(`Error retrieving users: ${err}`);
   } finally {
